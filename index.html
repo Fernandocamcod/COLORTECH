@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0a15">
+    <meta name="description" content="Enseña colores a la IA con la cámara. La IA no sabe nada hasta que tú le enseñas.">
+
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ColorVision AI">
+
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%230a0a15'/%3E%3Ccircle cx='256' cy='256' r='130' fill='none' stroke='%234a9eff' stroke-width='20'/%3E%3Ccircle cx='256' cy='256' r='55' fill='%23ef4444'/%3E%3Ccircle cx='350' cy='180' r='45' fill='%2310b981'/%3E%3Ccircle cx='162' cy='180' r='45' fill='%233b82f6'/%3E%3Ccircle cx='256' cy='370' r='38' fill='%23facc15'/%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%230a0a15'/%3E%3Ccircle cx='256' cy='256' r='130' fill='none' stroke='%234a9eff' stroke-width='20'/%3E%3Ccircle cx='256' cy='256' r='55' fill='%23ef4444'/%3E%3Ccircle cx='350' cy='180' r='45' fill='%2310b981'/%3E%3Ccircle cx='162' cy='180' r='45' fill='%233b82f6'/%3E%3Ccircle cx='256' cy='370' r='38' fill='%23facc15'/%3E%3C/svg%3E">
+
+    <link rel="manifest" id="dynamicManifest">
+    <title>ColorVision AI — La IA que aprende contigo</title>
+
+    <!-- PyScript (para análisis cromático) -->
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css">
+    <script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #0a0a15; --bg-secondary: #12121f; --bg-card: #1a1a2e;
+            --text-primary: #f0f0f5; --text-secondary: #9090a8; --text-muted: #606078;
+            --accent: #4a9eff; --accent-glow: rgba(74, 158, 255, 0.4);
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --border-color: #2a2a45; --border-light: #35354f;
+            --transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            --radius-lg: 20px; --radius-md: 14px; --radius-sm: 10px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            background: var(--bg-primary); color: var(--text-primary);
+            min-height: 100vh; padding: 16px;
+            display: flex; flex-direction: column; align-items: center;
+            transition: background var(--transition), color var(--transition);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body::before {
+            content: ''; position: fixed; inset: 0;
+            background: radial-gradient(ellipse at top left, rgba(74,158,255,0.08), transparent 50%),
+                        radial-gradient(ellipse at bottom right, rgba(217,70,239,0.06), transparent 50%);
+            pointer-events: none; z-index: 0;
+        }
+
+        .app-container {
+            width: 100%; max-width: 900px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6),
+                        0 0 0 1px var(--border-color);
+            position: relative; z-index: 1;
+        }
+        @media (max-width: 480px) {
+            .app-container { padding: 14px; border-radius: 16px; }
+        }
+
+        /* HEADER */
+        .header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 18px; flex-wrap: wrap; gap: 10px;
+            padding-bottom: 14px; border-bottom: 1px solid var(--border-color);
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .logo-badge {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #4a9eff, #d946ef);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+            box-shadow: 0 8px 20px rgba(74,158,255,0.3);
+            flex-shrink: 0;
+        }
+        .header h1 {
+            font-size: 1.3rem; font-weight: 700;
+            background: linear-gradient(135deg, #fff, #a0a0c0);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; letter-spacing: -0.02em;
+        }
+        .header .subtitle {
+            color: var(--text-secondary); font-size: 0.72rem;
+            margin-top: 2px; font-weight: 500;
+        }
+        .header-status {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--bg-card); padding: 7px 12px;
+            border-radius: 20px; font-size: 0.72rem;
+            border: 1px solid var(--border-color);
+        }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+            animation: pulse 2s infinite; flex-shrink: 0;
+        }
+        .status-dot.off { background: #666; box-shadow: none; animation: none; }
+        .status-dot.training { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
+        .status-dot.error { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+        /* CÁMARA */
+        .camera-section {
+            position: relative; border-radius: var(--radius-lg);
+            overflow: hidden; background: #000;
+            border: 2px solid var(--border-color);
+            aspect-ratio: 4/3;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            margin-bottom: 16px;
+        }
+        #video {
+            width: 100%; height: 100%; object-fit: cover;
+            display: block; transform: scaleX(-1);
+        }
+        #snapshotCanvas {
+            width: 100%; height: 100%; object-fit: cover;
+            display: none; transform: scaleX(-1);
+        }
+        .camera-section.snapshot-mode #video { display: none; }
+        .camera-section.snapshot-mode #snapshotCanvas { display: block; }
+
+        .detection-zone {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 55%; height: 55%;
+            border: 3px dashed rgba(255,255,255,0.9);
+            border-radius: var(--radius-lg);
+            pointer-events: none;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+            transition: border-color 0.3s;
+        }
+        .detection-zone::before {
+            content: 'Coloca el objeto aquí';
+            position: absolute; top: -30px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: #fff; font-size: 0.72rem; font-weight: 600;
+            padding: 5px 12px; border-radius: 14px;
+            white-space: nowrap; letter-spacing: 0.5px;
+        }
+        .camera-section.snapshot-mode .detection-zone { display: none; }
+
+        .badge {
+            position: absolute; top: 12px; left: 12px;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
+            padding: 6px 12px; border-radius: 18px;
+            font-size: 0.68rem; font-weight: 600;
+            color: #fff; display: flex; align-items: center; gap: 6px;
+            border: 1px solid var(--border-light);
+            z-index: 5;
+        }
+        .badge .dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--success); animation: pulse 1.5s infinite;
+        }
+        .badge.off .dot { background: #666; animation: none; }
+        .badge.learn .dot { background: #d946ef; }
+
+        .camera-off {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 14px;
+            color: var(--text-secondary); background: #0d0d15;
+            text-align: center; padding: 24px;
+        }
+        .camera-off .icon { font-size: 3.5rem; opacity: 0.4; }
+        .camera-off p { font-size: 0.85rem; max-width: 280px; line-height: 1.6; }
+
+        /* BOTONES PRINCIPALES */
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px; margin-bottom: 12px;
+        }
+        @media (max-width: 500px) {
+            .controls { grid-template-columns: 1fr; }
+        }
+
+        button {
+            padding: 14px 18px; font-size: 0.92rem; font-weight: 700;
+            border: none; border-radius: var(--radius-md);
+            cursor: pointer; transition: all 0.2s;
+            font-family: inherit;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            letter-spacing: 0.2px;
+        }
+        button:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
+
+        .btn-primary {
+            color: #fff;
+            background: linear-gradient(135deg, #4a9eff, #2563eb);
+            box-shadow: 0 4px 14px rgba(74,158,255,0.3);
+        }
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(74,158,255,0.5);
+        }
+        .btn-secondary {
+            background: var(--bg-card); color: var(--text-primary);
+            border: 1.5px solid var(--border-color);
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background: #20203a;
+            border-color: var(--border-light);
+            transform: translateY(-2px);
+        }
+        .btn-danger {
+            background: rgba(239,68,68,0.15); color: #f87171;
+            border: 1.5px solid rgba(239,68,68,0.35);
+        }
+        .btn-danger:hover:not(:disabled) {
+            background: rgba(239,68,68,0.25);
+            transform: translateY(-2px);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(16,185,129,0.3);
+        }
+        .btn-success:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(16,185,129,0.5);
+        }
+        .btn-install {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(245,158,11,0.3);
+        }
+
+        /* BOTÓN GRANDE DE CAPTURA */
+        .btn-capture-big {
+            width: 100%;
+            padding: 20px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #fff;
+            background: linear-gradient(135deg, #d946ef, #8b5cf6);
+            box-shadow: 0 8px 28px rgba(217,70,239,0.45);
+            border-radius: var(--radius-lg);
+            margin-bottom: 16px;
+            letter-spacing: 0.5px;
+        }
+        .btn-capture-big:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(217,70,239,0.65);
+        }
+        .btn-capture-big:disabled {
+            background: #333;
+            box-shadow: none;
+        }
+
+        /* PANEL PRINCIPAL DE INSTRUCCIONES */
+        .instruction-panel {
+            background: var(--bg-card); border-radius: var(--radius-lg);
+            padding: 18px; border: 1.5px solid var(--border-color);
+            margin-bottom: 14px;
+            display: flex; gap: 14px; align-items: flex-start;
+        }
+        .instruction-panel .icon {
+            font-size: 2.2rem; flex-shrink: 0;
+        }
+        .instruction-panel .text h3 {
+            font-size: 0.95rem; margin-bottom: 6px;
+            color: var(--text-primary); font-weight: 700;
+        }
+        .instruction-panel .text p {
+            font-size: 0.82rem; color: var(--text-secondary);
+            line-height: 1.55;
+        }
+
+        /* RESULTADO EN PANTALLA */
+        .result-display {
+            background: var(--bg-card); border-radius: var(--radius-lg);
+            padding: 20px; border: 2px solid var(--border-color);
+            margin-bottom: 14px;
+            display: none;
+            text-align: center;
+        }
+        .result-display.show { display: block; }
+        .result-display .label {
+            font-size: 0.72rem; text-transform: uppercase;
+            letter-spacing: 1.2px; color: var(--text-muted);
+            font-weight: 700; margin-bottom: 10px;
+        }
+        .result-display .color-name {
+            font-size: 2rem; font-weight: 800;
+            margin-bottom: 12px; letter-spacing: -0.02em;
+        }
+        .result-display .color-swatch-big {
+            width: 100px; height: 100px;
+            border-radius: var(--radius-lg);
+            border: 3px solid var(--border-color);
+            margin: 0 auto 12px;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.3);
+        }
+        .result-display .color-hex {
+            font-family: 'Courier New', monospace;
+            font-size: 0.88rem; color: var(--text-secondary);
+        }
+
+        /* LISTA DE COLORES APRENDIDOS */
+        .learned-panel {
+            background: var(--bg-card); border-radius: var(--radius-lg);
+            padding: 18px; border: 1.5px solid var(--border-color);
+        }
+        .learned-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 12px;
+            flex-wrap: wrap; gap: 8px;
+        }
+        .learned-header h2 {
+            font-size: 0.95rem; font-weight: 700;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .learned-header h2 .count-badge {
+            background: var(--accent); color: #fff;
+            padding: 2px 9px; border-radius: 10px;
+            font-size: 0.72rem;
+        }
+        .learned-actions { display: flex; gap: 6px; }
+        .learned-actions button {
+            padding: 6px 11px; font-size: 0.7rem;
+            border-radius: var(--radius-sm);
+        }
+
+        .learned-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 8px;
+        }
+        .learned-chip {
+            background: var(--bg-primary);
+            border-radius: var(--radius-md);
+            padding: 10px;
+            border: 1.5px solid var(--border-color);
+            display: flex; align-items: center; gap: 10px;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .learned-chip:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-light);
+        }
+        .learned-chip .lc-swatch {
+            width: 34px; height: 34px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.25);
+            flex-shrink: 0;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+        }
+        .learned-chip .lc-info { flex: 1; min-width: 0; }
+        .learned-chip .lc-name {
+            font-weight: 700; font-size: 0.85rem;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .learned-chip .lc-hex {
+            font-family: 'Courier New', monospace;
+            font-size: 0.65rem; color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .learned-chip .lc-delete {
+            position: absolute; top: 5px; right: 5px;
+            width: 20px; height: 20px; border-radius: 50%;
+            background: rgba(239,68,68,0.15);
+            color: #f87171; font-size: 0.72rem;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; opacity: 0;
+            transition: opacity 0.2s;
+            font-weight: 700;
+        }
+        .learned-chip:hover .lc-delete { opacity: 1; }
+
+        .learned-empty {
+            text-align: center; padding: 26px;
+            color: var(--text-muted); font-size: 0.82rem;
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            line-height: 1.65;
+        }
+
+        /* MODAL */
+        .modal-backdrop {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.88);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center; justify-content: center;
+            z-index: 9999; padding: 16px;
+            animation: fadeIn 0.3s;
+            overflow-y: auto;
+        }
+        .modal-backdrop.active { display: flex; }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+        .learn-modal {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            width: 100%; max-width: 850px;
+            overflow: hidden;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.85);
+            border: 5px solid #666;
+            transition: border-color 0.4s, box-shadow 0.4s;
+            animation: popIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            margin: auto;
+        }
+        @keyframes popIn {
+            from { transform: scale(0.85); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+
+        .learn-modal-body {
+            display: grid; grid-template-columns: 1fr 1.3fr;
+        }
+        @media (max-width: 700px) {
+            .learn-modal-body { grid-template-columns: 1fr; }
+        }
+
+        .learn-color-side {
+            background: #333; position: relative;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 30px 16px; min-height: 240px;
+            transition: background 0.5s;
+        }
+        .learn-color-side .color-big {
+            width: 150px; height: 150px;
+            border-radius: var(--radius-lg);
+            border: 4px solid rgba(255,255,255,0.4);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5),
+                        inset 0 0 50px rgba(0,0,0,0.15);
+            margin-bottom: 14px;
+        }
+        .learn-color-side .color-hex {
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem; font-weight: 700;
+            color: #fff; background: rgba(0,0,0,0.5);
+            padding: 6px 14px; border-radius: 20px;
+            letter-spacing: 1.5px;
+        }
+        .learn-color-side .color-metrics {
+            margin-top: 12px; display: flex; gap: 6px;
+            font-size: 0.68rem; color: rgba(255,255,255,0.9);
+            flex-wrap: wrap; justify-content: center;
+        }
+        .learn-color-side .color-metrics span {
+            background: rgba(0,0,0,0.45);
+            padding: 4px 9px; border-radius: 12px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .learn-question-side {
+            padding: 30px 24px;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .learn-question-side .new-tag {
+            display: inline-block;
+            background: linear-gradient(135deg, #d946ef, #8b5cf6);
+            color: #fff; font-size: 0.68rem; font-weight: 800;
+            padding: 6px 14px; border-radius: 20px;
+            letter-spacing: 1.5px; margin-bottom: 14px;
+            align-self: flex-start;
+        }
+        .learn-question-side h2 {
+            font-size: 1.5rem; line-height: 1.3;
+            margin-bottom: 10px; font-weight: 800;
+        }
+        .learn-question-side p.sub {
+            color: var(--text-secondary); font-size: 0.85rem;
+            margin-bottom: 20px; line-height: 1.55;
+        }
+        .learn-input {
+            width: 100%; padding: 15px 18px;
+            font-size: 1.1rem; font-weight: 700;
+            border-radius: var(--radius-md);
+            border: 2.5px solid var(--border-color);
+            background: var(--bg-primary); color: var(--text-primary);
+            outline: none; font-family: inherit;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .learn-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px var(--accent-glow);
+        }
+        .learn-input::placeholder { color: #666; font-weight: 500; }
+
+        .learn-actions {
+            display: flex; gap: 10px; margin-top: 20px;
+        }
+        .learn-actions button { flex: 1; padding: 14px 18px; font-size: 0.9rem; }
+
+        /* OVERLAYS */
+        .boot-overlay {
+            position: fixed; inset: 0;
+            background: var(--bg-primary);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 22px; z-index: 99999;
+            transition: opacity 0.5s;
+        }
+        .boot-overlay.hidden { opacity: 0; pointer-events: none; }
+        .boot-overlay .spinner-lg {
+            width: 64px; height: 64px;
+            border: 5px solid var(--border-color);
+            border-top-color: var(--accent); border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .boot-overlay p { color: var(--text-primary); text-align: center; font-size: 0.92rem; }
+
+        /* TOAST */
+        .install-toast {
+            position: fixed;
+            bottom: 20px; left: 50%;
+            transform: translateX(-50%) translateY(150%);
+            background: linear-gradient(135deg, #1a1a2e, #20203a);
+            border: 2px solid var(--accent);
+            border-radius: var(--radius-lg);
+            padding: 12px 18px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+            display: flex; align-items: center; gap: 12px;
+            z-index: 9998;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            max-width: calc(100% - 32px);
+        }
+        .install-toast.show { transform: translateX(-50%) translateY(0); }
+        .install-toast .icon { font-size: 1.6rem; flex-shrink: 0; }
+        .install-toast .text {
+            font-size: 0.8rem; line-height: 1.4; flex: 1;
+        }
+        .install-toast .text strong {
+            display: block; color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        .install-toast .text span {
+            color: var(--text-secondary); font-size: 0.72rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- BOOT -->
+    <div class="boot-overlay" id="bootOverlay">
+        <div class="spinner-lg"></div>
+        <p><strong>Iniciando ColorVision AI</strong><br><small id="bootStatus">Cargando análisis cromático...</small></p>
+    </div>
+
+    <!-- INSTALL TOAST -->
+    <div class="install-toast" id="installToast">
+        <div class="icon">📲</div>
+        <div class="text">
+            <strong>Instala ColorVision AI</strong>
+            <span>Accede rápido desde tu pantalla de inicio</span>
+        </div>
+        <button id="btnInstallToast" style="background:linear-gradient(135deg,#4a9eff,#2563eb);color:#fff;padding:8px 14px;border-radius:10px;font-size:0.75rem;font-weight:700;border:none;cursor:pointer;">
+            Instalar
+        </button>
+        <button id="btnCloseToast" style="background:transparent;color:#9090a8;border:none;font-size:1rem;cursor:pointer;padding:4px 8px;">✕</button>
+    </div>
+
+    <!-- MODAL DE APRENDIZAJE -->
+    <div class="modal-backdrop" id="learnModalBackdrop">
+        <div class="learn-modal" id="learnModal">
+            <div class="learn-modal-body">
+                <div class="learn-color-side" id="learnColorSide">
+                    <div class="color-big" id="learnColorBig"></div>
+                    <div class="color-hex" id="learnColorHex">#000000</div>
+                    <div class="color-metrics">
+                        <span id="learnHue">H: 0°</span>
+                        <span id="learnSat">S: 0%</span>
+                        <span id="learnBri">B: 0</span>
+                    </div>
+                </div>
+                <div class="learn-question-side">
+                    <span class="new-tag">🆕 NUEVO COLOR DETECTADO</span>
+                    <h2>¿Qué color es este?</h2>
+                    <p class="sub">Escríbeme el nombre. Lo recordaré para siempre. Si no me lo enseñas, no lo sabré nunca.</p>
+                    <input
+                        type="text"
+                        id="learnInput"
+                        class="learn-input"
+                        placeholder="Ej: Rojo, Azul cielo, Verde menta..."
+                        maxlength="40"
+                        autocomplete="off"
+                    >
+                    <div class="learn-actions">
+                        <button class="btn-success" id="btnSaveColor">💾 Guardar nombre</button>
+                        <button class="btn-secondary" id="btnSkipColor">⏭️ Saltar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <!-- HEADER -->
+        <div class="header">
+            <div class="header-left">
+                <div class="logo-badge">🎨</div>
+                <div>
+                    <h1>ColorVision AI</h1>
+                    <div class="subtitle">Yo no sé nada. Tú me enseñas los colores.</div>
+                </div>
+            </div>
+            <div class="header-status">
+                <span class="status-dot off" id="statusDot"></span>
+                <span id="statusText">Sin cámara</span>
+            </div>
+        </div>
+
+        <!-- CÁMARA -->
+        <div class="camera-section" id="cameraSection">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="snapshotCanvas"></canvas>
+            <div class="detection-zone"></div>
+            <div class="badge off" id="modeBadge">
+                <span class="dot"></span>
+                <span id="modeText">Sin cámara</span>
+            </div>
+            <div class="camera-off" id="cameraOff">
+                <div class="icon">📷</div>
+                <p>Presiona <strong>"Encender Cámara"</strong> y permite el acceso.</p>
+            </div>
+        </div>
+
+        <!-- CONTROLES -->
+        <div class="controls">
+            <button class="btn-primary" id="btnCamera">📷 Encender Cámara</button>
+            <button class="btn-danger" id="btnStop" disabled>⏹️ Detener</button>
+        </div>
+
+        <!-- BOTÓN GRANDE DE CAPTURA -->
+        <button class="btn-capture-big" id="btnCapture" disabled>
+            📸 Capturar y Preguntar
+        </button>
+
+        <!-- PANEL DE INSTRUCCIONES -->
+        <div class="instruction-panel">
+            <div class="icon">💡</div>
+            <div class="text">
+                <h3>¿Cómo funciona?</h3>
+                <p>
+                    1. Coloca un objeto dentro del <strong>recuadro punteado</strong>.<br>
+                    2. Presiona <strong>"📸 Capturar y Preguntar"</strong>.<br>
+                    3. Si ya conozco ese color, te lo diré.<br>
+                    4. Si es nuevo, te preguntaré cómo se llama.<br>
+                    5. <strong>No sé nada que no me hayas enseñado.</strong>
+                </p>
+            </div>
+        </div>
+
+        <!-- RESULTADO EN PANTALLA -->
+        <div class="result-display" id="resultDisplay">
+            <div class="label">Este color es</div>
+            <div class="color-swatch-big" id="resultSwatch"></div>
+            <div class="color-name" id="resultName">—</div>
+            <div class="color-hex" id="resultHex">#000000</div>
+        </div>
+
+        <!-- LISTA DE COLORES APRENDIDOS -->
+        <div class="learned-panel">
+            <div class="learned-header">
+                <h2>📚 Colores que me has enseñado <span class="count-badge" id="learnedCount">0</span></h2>
+                <div class="learned-actions">
+                    <button class="btn-secondary" id="btnExport">📤 Exportar</button>
+                    <button class="btn-secondary" id="btnImport">📥 Importar</button>
+                    <input type="file" id="importFile" accept=".json" style="display:none;">
+                </div>
+            </div>
+            <div class="learned-grid" id="learnedGrid"></div>
+            <div class="learned-empty" id="learnedEmpty">
+                Aún no me has enseñado ningún color.<br>
+                <strong>Presiona "📸 Capturar y Preguntar" para empezar a enseñarme.</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         PYTHON CON PYSCRIPT — Análisis cromático objetivo
+         ============================================================ -->
+    <script type="py" id="pythonAnalyzer">
+        import js
+        from pyscript import window
+        from pyodide.ffi import create_proxy, to_js
+
+        def rgb_to_hsv(r, g, b):
+            r, g, b = r / 255.0, g / 255.0, b / 255.0
+            mx, mn = max(r, g, b), min(r, g, b)
+            d = mx - mn
+            h = 0
+            if d > 0:
+                if mx == r:   h = 60 * (((g - b) / d) % 6)
+                elif mx == g: h = 60 * (((b - r) / d) + 2)
+                else:         h = 60 * (((r - g) / d) + 4)
+            if h < 0: h += 360
+            s = 0 if mx == 0 else d / mx
+            return h, s * 100, mx * 255
+
+        def analyze_frame(rgb_array_js, width, height):
+            """Analiza la zona central de la imagen y devuelve métricas del color."""
+            try:
+                data = list(rgb_array_js)
+                total_pixels = width * height
+                n = min(total_pixels, len(data) // 4)
+                if n == 0:
+                    return {"r_mean":0,"g_mean":0,"b_mean":0,"brightness":0,
+                            "saturation":0,"hue":0,"hex":"#000000"}
+
+                # Máscara circular central: solo analiza el 35% central
+                cx, cy = width / 2, height / 2
+                radius = min(width, height) * 0.35
+
+                rs, gs, bs = [], [], []
+                for i in range(n):
+                    idx = i * 4
+                    if idx + 2 >= len(data): break
+                    x = i % width
+                    y = i // width
+                    dx, dy = x - cx, y - cy
+                    if dx*dx + dy*dy > radius*radius:
+                        continue
+                    rs.append(data[idx]); gs.append(data[idx+1]); bs.append(data[idx+2])
+
+                if not rs:
+                    return {"r_mean":0,"g_mean":0,"b_mean":0,"brightness":0,
+                            "saturation":0,"hue":0,"hex":"#000000"}
+
+                # MEDIANA (robusta ante ruido)
+                rs.sort(); gs.sort(); bs.sort()
+                m = len(rs) // 2
+                r_med, g_med, b_med = rs[m], gs[m], bs[m]
+
+                h, s, v = rgb_to_hsv(r_med, g_med, b_med)
+                brightness = 0.299*r_med + 0.587*g_med + 0.114*b_med
+                hex_color = "#{:02X}{:02X}{:02X}".format(int(r_med), int(g_med), int(b_med))
+
+                return {
+                    "r_mean": int(r_med),
+                    "g_mean": int(g_med),
+                    "b_mean": int(b_med),
+                    "brightness": round(brightness, 1),
+                    "saturation": round(s, 1),
+                    "hue": round(h, 1),
+                    "hex": hex_color
+                }
+            except Exception as e:
+                return {"r_mean":0,"g_mean":0,"b_mean":0,"brightness":0,
+                        "saturation":0,"hue":0,"hex":"#000000","error":str(e)}
+
+        def py_analyze(rgb_array, width, height):
+            return to_js(analyze_frame(rgb_array, width, height))
+
+        window.py_analyze_frame = create_proxy(py_analyze)
+        try:
+            window.dispatchEvent(js.CustomEvent.new("pythonReady"))
+        except Exception:
+            pass
+        print("🐍 Python listo — análisis cromático activo")
+    </script>
+
+    <!-- ============================================================
+         JAVASCRIPT PRINCIPAL
+         ============================================================ -->
+    <script>
+        // ============================================================
+        // 0. MANIFEST + SERVICE WORKER EMBEBIDOS
+        // ============================================================
+        (function injectManifest() {
+            const iconSVG = "data:image/svg+xml," + encodeURIComponent(`
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                    <rect width="512" height="512" rx="96" fill="#0a0a15"/>
+                    <circle cx="256" cy="256" r="130" fill="none" stroke="#4a9eff" stroke-width="20"/>
+                    <circle cx="256" cy="256" r="55" fill="#ef4444"/>
+                    <circle cx="350" cy="180" r="45" fill="#10b981"/>
+                    <circle cx="162" cy="180" r="45" fill="#3b82f6"/>
+                    <circle cx="256" cy="370" r="38" fill="#facc15"/>
+                </svg>
+            `);
+
+            const manifestData = {
+                name: "ColorVision AI — Aprende Colores",
+                short_name: "ColorVision AI",
+                description: "La IA no sabe nada hasta que tú le enseñas. Detección de color con cámara.",
+                start_url: "./index.html",
+                scope: "./",
+                display: "standalone",
+                orientation: "portrait",
+                background_color: "#0a0a15",
+                theme_color: "#4a9eff",
+                lang: "es",
+                categories: ["education", "utilities"],
+                icons: [
+                    { src: iconSVG, sizes: "192x192", type: "image/svg+xml", purpose: "any" },
+                    { src: iconSVG, sizes: "512x512", type: "image/svg+xml", purpose: "any" },
+                    { src: iconSVG, sizes: "512x512", type: "image/svg+xml", purpose: "maskable" }
+                ]
+            };
+
+            const blob = new Blob([JSON.stringify(manifestData)], { type: 'application/manifest+json' });
+            document.getElementById('dynamicManifest').setAttribute('href', URL.createObjectURL(blob));
+            console.log('📱 Manifest embebido');
+        })();
+
+        (function registerServiceWorker() {
+            if (!('serviceWorker' in navigator)) return;
+            const swCode = `
+                const CACHE = 'colorvision-v4.0';
+                self.addEventListener('install', e => { self.skipWaiting(); });
+                self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
+                self.addEventListener('fetch', e => {
+                    const req = e.request;
+                    if (req.method !== 'GET') return;
+                    const url = new URL(req.url);
+                    if (url.origin !== self.location.origin) return;
+                    if (req.headers.get('accept')?.includes('text/html')) {
+                        e.respondWith(fetch(req).then(r => {
+                            const copy = r.clone();
+                            caches.open(CACHE).then(c => c.put(req, copy));
+                            return r;
+                        }).catch(() => caches.match(req)));
+                    } else {
+                        e.respondWith(caches.match(req).then(c => c || fetch(req).then(r => {
+                            if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(cc => cc.put(req, copy)); }
+                            return r;
+                        })));
+                    }
+                });
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register(URL.createObjectURL(blob), { scope: './' })
+                    .then(r => console.log('✅ SW registrado'))
+                    .catch(e => console.warn('⚠️ SW no registrado:', e.message));
+            });
+        })();
+
+        // ============================================================
+        // 0.5. INSTALL PROMPT
+        // ============================================================
+        let deferredPrompt = null;
+        const installToast = document.getElementById('installToast');
+        const btnInstallToast = document.getElementById('btnInstallToast');
+        const btnCloseToast = document.getElementById('btnCloseToast');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installToast.classList.add('show');
+        });
+
+        async function triggerInstall() {
+            if (!deferredPrompt) {
+                alert('Para instalar:\n\n• Android/Chrome: menú ⋮ → "Instalar aplicación"\n• iOS/Safari: Compartir → "Añadir a pantalla de inicio"');
+                return;
+            }
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+            installToast.classList.remove('show');
+        }
+        btnInstallToast.addEventListener('click', triggerInstall);
+        btnCloseToast.addEventListener('click', () => installToast.classList.remove('show'));
+
+        // ============================================================
+        // 1. DOM
+        // ============================================================
+        const $ = id => document.getElementById(id);
+        const video = $('video');
+        const snapshotCanvas = $('snapshotCanvas');
+        const cameraSection = $('cameraSection');
+        const cameraOff = $('cameraOff');
+        const modeBadge = $('modeBadge');
+        const modeText = $('modeText');
+
+        const btnCamera = $('btnCamera');
+        const btnStop = $('btnStop');
+        const btnCapture = $('btnCapture');
+
+        const statusDot = $('statusDot');
+        const statusText = $('statusText');
+
+        const resultDisplay = $('resultDisplay');
+        const resultSwatch = $('resultSwatch');
+        const resultName = $('resultName');
+        const resultHex = $('resultHex');
+
+        const learnedGrid = $('learnedGrid');
+        const learnedEmpty = $('learnedEmpty');
+        const learnedCount = $('learnedCount');
+
+        const btnExport = $('btnExport');
+        const btnImport = $('btnImport');
+        const importFile = $('importFile');
+
+        // Modal
+        const learnModalBackdrop = $('learnModalBackdrop');
+        const learnModal = $('learnModal');
+        const learnColorSide = $('learnColorSide');
+        const learnColorBig = $('learnColorBig');
+        const learnColorHex = $('learnColorHex');
+        const learnHue = $('learnHue');
+        const learnSat = $('learnSat');
+        const learnBri = $('learnBri');
+        const learnInput = $('learnInput');
+        const btnSaveColor = $('btnSaveColor');
+        const btnSkipColor = $('btnSkipColor');
+
+        const bootOverlay = $('bootOverlay');
+        const bootStatus = $('bootStatus');
+
+        // ============================================================
+        // 2. ESTADO
+        // ============================================================
+        // Tolerancias para considerar "mismo color"
+        const HUE_TOLERANCE = 18;      // ±18° de tono
+        const SAT_TOLERANCE = 18;      // ±18% saturación
+        const BRI_TOLERANCE = 25;      // ±25 puntos de brillo
+
+        let stream = null;
+        let isCameraOn = false;
+        let pythonReady = false;
+        let isProcessing = false;
+
+        const pyCanvas = document.createElement('canvas');
+        pyCanvas.width = 200; pyCanvas.height = 150;
+        const pyCtx = pyCanvas.getContext('2d', { willReadFrequently: true });
+
+        const bigCanvas = document.createElement('canvas');
+
+        // ============================================================
+        // 3. COLORES APRENDIDOS (localStorage)
+        // ============================================================
+        // Estructura: { name, hex, hue, saturation, brightness, date }
+        let learnedColors = [];
+        const STORAGE_KEY = 'colorvision_learned_v4';
+
+        function loadLearnedColors() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) learnedColors = JSON.parse(raw);
+            } catch (e) { learnedColors = []; }
+            renderLearnedColors();
+        }
+
+        function saveLearnedColors() {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(learnedColors)); } catch (e) {}
+        }
+
+        function renderLearnedColors() {
+            learnedCount.textContent = learnedColors.length;
+            if (learnedColors.length === 0) {
+                learnedGrid.innerHTML = '';
+                learnedEmpty.style.display = 'block';
+                return;
+            }
+            learnedEmpty.style.display = 'none';
+            learnedGrid.innerHTML = learnedColors.map((c, i) => `
+                <div class="learned-chip">
+                    <div class="lc-swatch" style="background:${c.hex};"></div>
+                    <div class="lc-info">
+                        <div class="lc-name">${escapeHtml(c.name)}</div>
+                        <div class="lc-hex">${c.hex}</div>
+                    </div>
+                    <div class="lc-delete" data-idx="${i}" title="Eliminar">✕</div>
+                </div>
+            `).join('');
+
+            learnedGrid.querySelectorAll('.lc-delete').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.dataset.idx);
+                    if (confirm(`¿Olvidar el color "${learnedColors[idx].name}"?`)) {
+                        learnedColors.splice(idx, 1);
+                        saveLearnedColors();
+                        renderLearnedColors();
+                        setStatus(`🗑️ Color olvidado`, 'off');
+                    }
+                });
+            });
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, ch => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            }[ch]));
+        }
+
+        function findLearnedColor(hue, saturation, brightness) {
+            // Ignoramos hue si es muy gris
+            const isGray = saturation < 15;
+
+            for (const c of learnedColors) {
+                const cIsGray = c.saturation < 15;
+
+                // Saturación y brillo deben estar dentro de tolerancia
+                if (Math.abs(c.saturation - saturation) > SAT_TOLERANCE) continue;
+                if (Math.abs(c.brightness - brightness) > BRI_TOLERANCE) continue;
+
+                // Si ambos son grises → comparar solo brillo
+                if (isGray && cIsGray) return c;
+                // Si uno es gris y el otro no → no coincide
+                if (isGray !== cIsGray) continue;
+
+                // Comparar hue con distancia circular
+                let dh = Math.abs(c.hue - hue);
+                if (dh > 180) dh = 360 - dh;
+                if (dh <= HUE_TOLERANCE) return c;
+            }
+            return null;
+        }
+
+        // ============================================================
+        // 4. UI HELPERS
+        // ============================================================
+        function setStatus(text, type = 'ok') {
+            statusText.textContent = text;
+            statusDot.className = 'status-dot';
+            if (type === 'off')           statusDot.classList.add('off');
+            else if (type === 'training') statusDot.classList.add('training');
+            else if (type === 'error')    statusDot.classList.add('error');
+        }
+
+        function setModeBadge(text, cls = '') {
+            modeText.textContent = text;
+            modeBadge.className = 'badge ' + cls;
+        }
+
+        function applyAccentFromColor(hex) {
+            try {
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                document.documentElement.style.setProperty('--accent', hex);
+                document.documentElement.style.setProperty('--accent-glow', `rgba(${r},${g},${b},0.45)`);
+            } catch (e) {}
+        }
+
+        function resetAccent() {
+            document.documentElement.style.removeProperty('--accent');
+            document.documentElement.style.removeProperty('--accent-glow');
+        }
+
+        // ============================================================
+        // 5. CÁMARA
+        // ============================================================
+        async function startCamera() {
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+                await new Promise(r => setTimeout(r, 300));
+            }
+
+            const configs = [
+                { video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+                { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+                { video: { width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+                { video: true, audio: false }
+            ];
+
+            for (let i = 0; i < configs.length; i++) {
+                try {
+                    setStatus(`Abriendo cámara (${i+1}/${configs.length})...`, 'training');
+                    stream = await navigator.mediaDevices.getUserMedia(configs[i]);
+                    break;
+                } catch (err) { console.warn(err); }
+            }
+
+            if (!stream) {
+                setStatus('❌ No se pudo acceder a la cámara', 'error');
+                alert('No se pudo acceder a la cámara.\n\n1. Cierra otras apps con cámara.\n2. Usa HTTPS o localhost.\n3. Reinicia el navegador.');
+                return;
+            }
+
+            try {
+                video.srcObject = stream;
+                await video.play();
+                isCameraOn = true;
+
+                cameraOff.style.display = 'none';
+                cameraSection.classList.remove('snapshot-mode');
+
+                btnCamera.disabled = true;
+                btnStop.disabled = false;
+                btnCapture.disabled = false;
+
+                setModeBadge('Cámara lista · Coloca el objeto en el recuadro');
+                setStatus('Cámara activa ✓ Listo para capturar', 'ok');
+            } catch (err) {
+                setStatus('❌ Error: ' + err.message, 'error');
+            }
+        }
+
+        function stopCamera() {
+            if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+            isCameraOn = false;
+            video.srcObject = null;
+            cameraOff.style.display = 'flex';
+            cameraSection.classList.remove('snapshot-mode');
+            setModeBadge('Sin cámara', 'off');
+            btnCamera.disabled = false;
+            btnStop.disabled = true;
+            btnCapture.disabled = true;
+            setStatus('Cámara detenida', 'off');
+        }
+
+        // ============================================================
+        // 6. CAPTURAR Y PREGUNTAR (ACCIÓN PRINCIPAL)
+        // ============================================================
+        async function captureAndAsk() {
+            if (!isCameraOn || !video.videoWidth) {
+                alert('La cámara no está lista.');
+                return;
+            }
+            if (!pythonReady || !window.py_analyze_frame) {
+                alert('El análisis cromático aún no está listo. Espera unos segundos.');
+                return;
+            }
+            if (isProcessing) return;
+            isProcessing = true;
+
+            btnCapture.disabled = true;
+            btnCapture.textContent = '⏳ Analizando color...';
+            setStatus('🎨 Analizando el color del recuadro...', 'training');
+
+            try {
+                // Capturar frame actual
+                const w = video.videoWidth, h = video.videoHeight;
+                bigCanvas.width = w; bigCanvas.height = h;
+                const bigCtx = bigCanvas.getContext('2d');
+                bigCtx.save(); bigCtx.scale(-1, 1);
+                bigCtx.drawImage(video, -w, 0, w, h);
+                bigCtx.restore();
+
+                // Mostrar la foto congelada en el canvas visible
+                snapshotCanvas.width = w; snapshotCanvas.height = h;
+                snapshotCanvas.getContext('2d').drawImage(bigCanvas, 0, 0);
+                cameraSection.classList.add('snapshot-mode');
+
+                // Analizar con Python (solo zona central)
+                const pySnap = document.createElement('canvas');
+                pySnap.width = 200; pySnap.height = 150;
+                const pctx = pySnap.getContext('2d', { willReadFrequently: true });
+                pctx.drawImage(bigCanvas, 0, 0, pySnap.width, pySnap.height);
+                const imageData = pctx.getImageData(0, 0, pySnap.width, pySnap.height);
+                const r = window.py_analyze_frame(imageData.data, pySnap.width, pySnap.height);
+
+                if (!r || !r.hex) {
+                    throw new Error('No se pudo analizar el color.');
+                }
+
+                // Buscar si ya lo conocemos
+                const known = findLearnedColor(r.hue, r.saturation, r.brightness);
+
+                if (known) {
+                    // ✅ Ya lo conocemos → decir su nombre
+                    setStatus(`✅ Ya conozco este color: "${known.name}"`, 'ok');
+                    showResult(known.name, r.hex);
+                    applyAccentFromColor(r.hex);
+                    btnCapture.disabled = false;
+                    btnCapture.textContent = '📸 Capturar y Preguntar';
+                } else {
+                    // 🆕 Es nuevo → abrir modal para aprenderlo
+                    openLearnModal(r);
+                    // El botón queda deshabilitado hasta que responda el usuario
+                }
+            } catch (err) {
+                console.error(err);
+                setStatus('❌ Error: ' + err.message, 'error');
+                btnCapture.disabled = false;
+                btnCapture.textContent = '📸 Capturar y Preguntar';
+            } finally {
+                isProcessing = false;
+            }
+        }
+
+        function showResult(name, hex) {
+            resultDisplay.classList.add('show');
+            resultSwatch.style.background = hex;
+            resultName.textContent = name;
+            resultName.style.color = hex;
+            resultHex.textContent = hex;
+        }
+
+        function hideResult() {
+            resultDisplay.classList.remove('show');
+        }
+
+        // ============================================================
+        // 7. MODAL DE APRENDIZAJE
+        // ============================================================
+        let pendingColor = null;
+
+        function openLearnModal(r) {
+            pendingColor = {
+                hex: r.hex,
+                hue: r.hue,
+                saturation: r.saturation,
+                brightness: r.brightness
+            };
+
+            // Aplicar color al modal
+            learnColorSide.style.background = r.hex;
+            learnColorBig.style.background = r.hex;
+            learnColorHex.textContent = r.hex;
+            learnHue.textContent = `H: ${r.hue}°`;
+            learnSat.textContent = `S: ${r.saturation}%`;
+            learnBri.textContent = `B: ${r.brightness}`;
+
+            // El borde del modal toma el color detectado
+            learnModal.style.borderColor = r.hex;
+            learnModal.style.boxShadow = `0 40px 100px rgba(0,0,0,0.85), 0 0 60px ${r.hex}90`;
+
+            learnInput.value = '';
+            learnModalBackdrop.classList.add('active');
+            setModeBadge('Modo APRENDER · Esperando nombre', 'learn');
+            setStatus('🆕 Color nuevo. ¿Cómo se llama?', 'training');
+
+            setTimeout(() => learnInput.focus(), 200);
+        }
+
+        function closeLearnModal() {
+            learnModalBackdrop.classList.remove('active');
+            pendingColor = null;
+            learnInput.value = '';
+        }
+
+        function saveLearnedColor() {
+            const name = learnInput.value.trim();
+            if (!name) {
+                learnInput.focus();
+                learnInput.style.borderColor = '#ef4444';
+                setTimeout(() => learnInput.style.borderColor = '', 600);
+                return;
+            }
+            if (!pendingColor) return;
+
+            // Guardar
+            learnedColors.push({
+                name: name,
+                hex: pendingColor.hex,
+                hue: pendingColor.hue,
+                saturation: pendingColor.saturation,
+                brightness: pendingColor.brightness,
+                date: Date.now()
+            });
+            saveLearnedColors();
+            renderLearnedColors();
+
+            // Mostrar resultado
+            showResult(name, pendingColor.hex);
+            applyAccentFromColor(pendingColor.hex);
+
+            setStatus(`✅ Aprendí: "${name}"`, 'ok');
+            setModeBadge('Cámara lista · Coloca otro objeto');
+            closeLearnModal();
+
+            // Reactivar botón
+            btnCapture.disabled = false;
+            btnCapture.textContent = '📸 Capturar y Preguntar';
+
+            // Volver al modo cámara en vivo después de 1.5s
+            setTimeout(() => {
+                cameraSection.classList.remove('snapshot-mode');
+            }, 1500);
+        }
+
+        function skipLearnedColor() {
+            setStatus('⏭️ Saltaste este color. No lo recordaré.', 'off');
+            setModeBadge('Cámara lista · Coloca otro objeto');
+            closeLearnModal();
+            hideResult();
+            btnCapture.disabled = false;
+            btnCapture.textContent = '📸 Capturar y Preguntar';
+            setTimeout(() => {
+                cameraSection.classList.remove('snapshot-mode');
+            }, 800);
+        }
+
+        // ============================================================
+        // 8. EXPORTAR / IMPORTAR
+        // ============================================================
+        function exportLearned() {
+            if (learnedColors.length === 0) { alert('No hay colores para exportar.'); return; }
+            const data = JSON.stringify({
+                version: 4,
+                exportDate: new Date().toISOString(),
+                colors: learnedColors
+            }, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `colorvision_colors_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            setStatus('📤 Colores exportados.', 'ok');
+        }
+
+        function importLearned() { importFile.click(); }
+
+        importFile.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                const colors = data.colors || data;
+                if (!Array.isArray(colors)) throw new Error('Formato inválido');
+                if (!confirm(`¿Importar ${colors.length} colores? Se agregarán a los existentes.`)) return;
+                learnedColors = learnedColors.concat(colors);
+                saveLearnedColors();
+                renderLearnedColors();
+                setStatus(`📥 ${colors.length} colores importados.`, 'ok');
+            } catch (err) {
+                alert('Error al importar: ' + err.message);
+            } finally {
+                importFile.value = '';
+            }
+        });
+
+        // ============================================================
+        // 9. EVENTOS
+        // ============================================================
+        btnCamera.addEventListener('click', startCamera);
+        btnStop.addEventListener('click', stopCamera);
+        btnCapture.addEventListener('click', captureAndAsk);
+        btnSaveColor.addEventListener('click', saveLearnedColor);
+        btnSkipColor.addEventListener('click', skipLearnedColor);
+        btnExport.addEventListener('click', exportLearned);
+        btnImport.addEventListener('click', importLearned);
+
+        learnInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') saveLearnedColor();
+            if (e.key === 'Escape') skipLearnedColor();
+        });
+
+        learnModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === learnModalBackdrop) skipLearnedColor();
+        });
+
+        window.addEventListener('pythonReady', () => { pythonReady = true; });
+        const pyCheck = setInterval(() => {
+            if (window.py_analyze_frame) { pythonReady = true; clearInterval(pyCheck); }
+        }, 1000);
+
+        // ============================================================
+        // 10. INIT
+        // ============================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            setStatus('Listo. Enciende la cámara para empezar.', 'off');
+            setModeBadge('Sin cámara', 'off');
+            loadLearnedColors();
+
+            setTimeout(() => {
+                bootOverlay.classList.add('hidden');
+            }, 1500);
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (stream) stream.getTracks().forEach(t => t.stop());
+        });
+    </script>
+</body>
+</html>
